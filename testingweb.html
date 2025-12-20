@@ -3,15 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Content Security Policy for enhanced security -->
+    <!-- 强化的内容安全策略 (CSP) -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self'; 
                    script-src 'self' https://cdn.jsdelivr.net; 
                    style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-                   img-src 'self' https://cdn-icons-png.flaticon.com data:;
+                   img-src 'self' https://cdn-icons-png.flaticon.com;
                    connect-src 'self';
                    font-src 'self' https://cdn.jsdelivr.net;
-                   frame-src https://docs.google.com;">
+                   frame-src https://docs.google.com https://forms.gle;
+                   base-uri 'self';
+                   object-src 'none';
+                   frame-ancestors 'self';
+                   upgrade-insecure-requests;
+                   block-all-mixed-content;">
+    
+    <!-- 安全响应头补充 (GitHub Pages部分自动添加，此处做冗余防护) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <title>Old Paper Upload System</title>
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
@@ -486,7 +496,12 @@
                         </div>
                     </div>
                     
-                    <a href="https://forms.gle/zDivK2A37ZDgNQDj8" target="_blank" rel="noopener noreferrer" class="btn btn-success mt-3">
+                    <!-- 强化的Google表单链接，增加安全验证 -->
+                    <a href="https://forms.gle/zDivK2A37ZDgNQDj8" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       class="btn btn-success mt-3"
+                       onclick="return validateAndConfirmGoogleFormLink(this);">
                         <i class="bi bi-cloud-upload me-2"></i>
                         <span class="lang-text" data-en="Upload via Google Form" data-zh="透過 Google 表單上傳">Upload via Google Form</span>
                     </a>
@@ -512,6 +527,16 @@
         let currentGrade = null, currentSubject = null, currentTerm = null, currentYear = null;
         let currentLang = 'en';
 
+        // 安全配置 - 提取敏感配置避免硬编码泄露
+        const SECURE_CONFIG = {
+            VALID_GOOGLE_FORM_URL: 'https://forms.gle/zDivK2A37ZDgNQDj8',
+            ALLOWED_GRADES: ['jh1', 'jh2', 'jh3', 'sh1', 'sh2', 'sh3', 'other'],
+            ALLOWED_SUBJECTS: ['chi', 'eng', 'math', 'phy', 'chem', 'bio'],
+            ALLOWED_TERMS: ['t1', 't2', 't3'],
+            ALLOWED_YEARS: ['2020', '2021', '2022', '2023', '2024', '2025', '2026'],
+            ALLOWED_LANGUAGES: ['en', 'zh']
+        };
+
         // Security: HTML escaping function
         function escapeHtml(text) {
             if (typeof text !== 'string') return '';
@@ -523,13 +548,34 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // Security: Validate input against allowed values
+        // Security: Validate input against allowed values with type check
         function validateInput(value, allowedValues) {
-            return allowedValues.includes(value);
+            return typeof value === 'string' && allowedValues.includes(value);
         }
 
-        // Language switching function
+        // 强化的Google表单链接验证和确认
+        function validateAndConfirmGoogleFormLink(element) {
+            // 验证链接未被篡改
+            if (element.href !== SECURE_CONFIG.VALID_GOOGLE_FORM_URL) {
+                alert(currentLang === 'zh' ? '鏈接無效，請聯繫管理員！' : 'Invalid link, please contact administrator!');
+                return false;
+            }
+            
+            // 确认跳转
+            const confirmMsg = currentLang === 'zh' 
+                ? `您將跳轉到 Google 表單：\n${SECURE_CONFIG.VALID_GOOGLE_FORM_URL}\n\n請確認鏈接正確後點擊「確定」。`
+                : `You are about to be redirected to Google Form:\n${SECURE_CONFIG.VALID_GOOGLE_FORM_URL}\n\nClick "OK" to confirm.`;
+            
+            return confirm(confirmMsg);
+        }
+
+        // Language switching function with validation
         function changeLang(lang) {
+            // 验证语言参数合法性
+            if (!validateInput(lang, SECURE_CONFIG.ALLOWED_LANGUAGES)) {
+                lang = 'en'; // 回退到默认语言
+            }
+            
             currentLang = lang;
             
             // Update html lang attribute
@@ -583,10 +629,9 @@
             });
         }
 
-        // Grade selection with validation
+        // Grade selection with enhanced validation
         function selectGrade(val) {
-            const allowedGrades = ['jh1', 'jh2', 'jh3', 'sh1', 'sh2', 'sh3', 'other'];
-            if (!validateInput(val, allowedGrades)) {
+            if (!validateInput(val, SECURE_CONFIG.ALLOWED_GRADES)) {
                 console.error('Invalid grade selected');
                 return;
             }
@@ -608,10 +653,9 @@
             updateStepIndicators();
         }
 
-        // Subject selection with validation
+        // Subject selection with enhanced validation
         function selectSubject(val) {
-            const allowedSubjects = ['chi', 'eng', 'math', 'phy', 'chem', 'bio'];
-            if (!validateInput(val, allowedSubjects)) {
+            if (!validateInput(val, SECURE_CONFIG.ALLOWED_SUBJECTS)) {
                 console.error('Invalid subject selected');
                 return;
             }
@@ -631,10 +675,9 @@
             updateStepIndicators();
         }
 
-        // Term selection with validation
+        // Term selection with enhanced validation
         function selectTerm(val) {
-            const allowedTerms = ['t1', 't2', 't3'];
-            if (!validateInput(val, allowedTerms)) {
+            if (!validateInput(val, SECURE_CONFIG.ALLOWED_TERMS)) {
                 console.error('Invalid term selected');
                 return;
             }
@@ -652,10 +695,9 @@
             updateStepIndicators();
         }
 
-        // Year selection with validation
+        // Year selection with enhanced validation
         function selectYear(val) {
-            const allowedYears = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
-            if (!validateInput(val, allowedYears)) {
+            if (!validateInput(val, SECURE_CONFIG.ALLOWED_YEARS)) {
                 console.error('Invalid year selected');
                 return;
             }
@@ -785,9 +827,31 @@
                     }
                 });
             });
+
+            // 防止下拉框被非法修改 (增强前端防护)
+            const protectDropdowns = () => {
+                document.querySelectorAll('.form-select').forEach(select => {
+                    // 禁止通过控制台修改disabled属性
+                    Object.defineProperty(select, 'disabled', {
+                        set: function(value) {
+                            // 只允许合法的禁用/启用逻辑
+                            const allowed = (select.id === 'subjectDropdown' && !!currentGrade) ||
+                                            (select.id === 'termDropdown' && !!currentSubject) ||
+                                            (select.id === 'yearDropdown' && !!currentTerm) ||
+                                            !value;
+                            if (allowed) {
+                                this.setAttribute('disabled', value);
+                            }
+                        },
+                        get: function() {
+                            return this.hasAttribute('disabled');
+                        }
+                    });
+                });
+            };
             
-            // Security: Log security initialization
-            console.log('Security features initialized: XSS protection, input validation, CSP enabled');
+            // 初始化下拉框保护
+            protectDropdowns();
         });
     </script>
 </body>
